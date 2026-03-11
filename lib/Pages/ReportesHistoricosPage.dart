@@ -684,7 +684,34 @@ class _ReportesHistoricosPageState extends State<ReportesHistoricosPage> {
 
   String _rango = 'Semana';
   String _variableSeleccionada = 'Temperatura';
+  String _evaluarImpacto(DatosHistoricos datos) {
+    if (datos.horasEstresCalor > 6 && datos.horasEstresHumedad > 6) {
+      return "Alto riesgo de reducción en rendimiento y calidad del cultivo.";
+    }
 
+    if (datos.horasEstresCalor > 6) {
+      return "Posible afectación en fotosíntesis y crecimiento vegetativo.";
+    }
+
+    if (datos.horasEstresHumedad > 6) {
+      return "Riesgo de marchitez y estrés hídrico prolongado.";
+    }
+
+    return "Condiciones dentro de parámetros aceptables.";
+  }
+
+  String _generarRecomendacion(DatosHistoricos datos) {
+    if (datos.estadoCultivo == "Crítico") {
+      return "Se recomienda revisión inmediata del sistema de riego y ventilación.";
+    }
+
+    if (datos.estadoCultivo == "Riesgo Moderado") {
+      return "Monitorear condiciones cada 2 horas.";
+    }
+
+    return "Mantener monitoreo regular.";
+  }
+  
   late HistoricalDataService _service;
 
   late Future<DatosHistoricos> _futureDataRangoSeleccionado;
@@ -1228,6 +1255,74 @@ class _ReportesHistoricosPageState extends State<ReportesHistoricosPage> {
                       a.duracionHoras.toStringAsFixed(1)
                     ])
                         .toList(),
+                  ),
+
+                  pw.SizedBox(height: 20),
+                  pw.Text(
+                    "Evaluación Técnica de Estrés",
+                    style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+                  ),
+
+                  pw.SizedBox(height: 10),
+
+                  pw.Container(
+                    padding: const pw.EdgeInsets.all(12),
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border.all(),
+                      borderRadius: pw.BorderRadius.circular(8),
+                    ),
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+
+                        pw.Text("Estado General: ${datos.estadoCultivo}"),
+
+                        pw.SizedBox(height: 5),
+
+                        pw.Text(
+                          "Índice de Estrés Térmico: ${datos.indiceEstresTermico.toStringAsFixed(1)} %",
+                        ),
+
+                        pw.Text(
+                          "Índice de Estrés Hídrico: ${datos.indiceEstresHidrico.toStringAsFixed(1)} %",
+                        ),
+
+                        pw.SizedBox(height: 8),
+
+                        pw.Text(
+                          "Horas acumuladas en estrés térmico: ${datos.horasEstresCalor.toStringAsFixed(1)} h",
+                        ),
+
+                        pw.Text(
+                          "Horas acumuladas en estrés hídrico: ${datos.horasEstresHumedad.toStringAsFixed(1)} h",
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  pw.SizedBox(height: 12),
+                  pw.Text(
+                    "Impacto Estimado:",
+                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                  ),
+
+                  pw.SizedBox(height: 5),
+
+                  pw.Text(
+                    _evaluarImpacto(datos),
+                  ),
+
+                  pw.SizedBox(height: 15),
+
+                  pw.Text(
+                    "Recomendaciones Técnicas:",
+                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                  ),
+
+                  pw.SizedBox(height: 5),
+
+                  pw.Text(
+                    _generarRecomendacion(datos),
                   ),
 
                 pw.SizedBox(height: 25),
