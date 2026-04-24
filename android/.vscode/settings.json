@@ -1,0 +1,4 @@
+{
+  "java.import.gradle.wrapper.enabled": false,
+  "java.import.gradle.version": "8.12.1"
+}

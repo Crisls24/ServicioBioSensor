@@ -57,8 +57,6 @@ flutter:
     - assets/tomate.jpg
 
 flutter_native_splash:
-  color: "#A5D6A7" # Fondo verde claro
-  image: assets/Invernadero.png
+  color: "#0A0A0A" # Fondo oscuro BioTech Premium
   android_12:
-    color: "#A5D6A7"
-    image: assets/Invernadero.png
+    color: "#0A0A0A"

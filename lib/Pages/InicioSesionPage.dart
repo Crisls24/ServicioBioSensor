@@ -9,7 +9,7 @@ import 'package:invernadero/Pages/HomePage.dart';
 
 class InicioSesion extends StatefulWidget {
   final String? invernaderoIdToJoin; // ID recibido desde el link de invitación
-  final String appId; 
+  final String appId;
 
   const InicioSesion({
     super.key,
@@ -31,7 +31,7 @@ class _InicioSesionState extends State<InicioSesion> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  String? _pendingInvernadero; 
+  String? _pendingInvernadero;
 
   @override
   void initState() {
@@ -46,7 +46,7 @@ class _InicioSesionState extends State<InicioSesion> {
         .doc(widget.appId)
         .collection('public')
         .doc('data')
-        .collection('usuarios') 
+        .collection('usuarios')
         .doc(uid);
   }
 
@@ -89,8 +89,11 @@ class _InicioSesionState extends State<InicioSesion> {
         await _navigateAfterLogin(user);
       }
     } on FirebaseAuthException catch (e) {
-      String errorMessage = 'Error al iniciar sesión. Verifica tu correo y contraseña.';
-      if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
+      String errorMessage =
+          'Error al iniciar sesión. Verifica tu correo y contraseña.';
+      if (e.code == 'user-not-found' ||
+          e.code == 'wrong-password' ||
+          e.code == 'invalid-credential') {
         errorMessage = 'Credenciales inválidas. Revisa tu correo y contraseña.';
       } else if (e.code == 'user-disabled') {
         errorMessage = 'Tu cuenta ha sido deshabilitada.';
@@ -133,7 +136,8 @@ class _InicioSesionState extends State<InicioSesion> {
 
       if (user != null) {
         final prefs = await SharedPreferences.getInstance();
-        final savedInvernadero = widget.invernaderoIdToJoin ?? _pendingInvernadero;
+        final savedInvernadero =
+            widget.invernaderoIdToJoin ?? _pendingInvernadero;
         final userRef = _getUserProfileRef(user.uid);
         final doc = await userRef.get();
 
@@ -165,6 +169,7 @@ class _InicioSesionState extends State<InicioSesion> {
       if (mounted) _loadingNotifier.value = false;
     }
   }
+
   // Decide a dónde redirigir después del login
   Future<void> _navigateAfterLogin(User user) async {
     final docRef = _getUserProfileRef(user.uid);
@@ -175,15 +180,16 @@ class _InicioSesionState extends State<InicioSesion> {
     await prefs.remove('pendingInvernaderoId');
 
     final String normalizedRol = (data['rol'] as String?)?.toLowerCase() ?? '';
-    final String invernaderoIdExistente =
-        (data['invernaderoId'] as String?) ??
-            (data['greenhouseId'] as String?) ??
-            '';
-    final String? invernaderoToJoin = widget.invernaderoIdToJoin?.isNotEmpty == true
-        ? widget.invernaderoIdToJoin
-        : _pendingInvernadero;
+    final String invernaderoIdExistente = (data['invernaderoId'] as String?) ??
+        (data['greenhouseId'] as String?) ??
+        '';
+    final String? invernaderoToJoin =
+        widget.invernaderoIdToJoin?.isNotEmpty == true
+            ? widget.invernaderoIdToJoin
+            : _pendingInvernadero;
 
-    debugPrint(' LOGIN_NAV → rol=$normalizedRol, invernaderoExistente=$invernaderoIdExistente');
+    debugPrint(
+        ' LOGIN_NAV → rol=$normalizedRol, invernaderoExistente=$invernaderoIdExistente');
     debugPrint(' LOGIN_NAV → invernaderoToJoin=$invernaderoToJoin');
 
     // Si vino desde link de invitación (prioridad alta)
@@ -191,13 +197,10 @@ class _InicioSesionState extends State<InicioSesion> {
       debugPrint('📩 Usuario vino desde link ($invernaderoToJoin)');
 
       // Si ya tiene el rol y es del mismo invernadero, va a Home
-      if (normalizedRol == 'empleado' && invernaderoIdExistente == invernaderoToJoin) {
-        Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (_) => HomePage(appId: widget.appId)
-            )
-        );
+      if (normalizedRol == 'empleado' &&
+          invernaderoIdExistente == invernaderoToJoin) {
+        Navigator.pushReplacement(context,
+            MaterialPageRoute(builder: (_) => HomePage(appId: widget.appId)));
         return;
       }
 
@@ -220,21 +223,15 @@ class _InicioSesionState extends State<InicioSesion> {
         Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-                builder: (_) => Gestioninvernadero(appId: widget.appId)
-            )
-        );
+                builder: (_) => Gestioninvernadero(appId: widget.appId)));
         return;
       }
     }
 
     // Flujo normal (sin link)
     if (normalizedRol.isEmpty || normalizedRol == 'pendiente') {
-      Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-              builder: (_) => SeleccionRol(appId: widget.appId)
-          )
-      );
+      Navigator.pushReplacement(context,
+          MaterialPageRoute(builder: (_) => SeleccionRol(appId: widget.appId)));
       return;
     }
 
@@ -243,9 +240,7 @@ class _InicioSesionState extends State<InicioSesion> {
         Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-                builder: (_) => Gestioninvernadero(appId: widget.appId)
-            )
-        );
+                builder: (_) => Gestioninvernadero(appId: widget.appId)));
       } else {
         Navigator.pushReplacementNamed(context, '/registrarinvernadero');
       }
@@ -253,20 +248,12 @@ class _InicioSesionState extends State<InicioSesion> {
     }
 
     if (normalizedRol == 'empleado') {
-      Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-              builder: (_) => HomePage(appId: widget.appId)
-          )
-      );
+      Navigator.pushReplacement(context,
+          MaterialPageRoute(builder: (_) => HomePage(appId: widget.appId)));
       return;
     }
-    Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-            builder: (_) => SeleccionRol(appId: widget.appId)
-        )
-    );
+    Navigator.pushReplacement(context,
+        MaterialPageRoute(builder: (_) => SeleccionRol(appId: widget.appId)));
   }
 
   @override
@@ -299,7 +286,10 @@ class _InicioSesionState extends State<InicioSesion> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: const [
-                    BoxShadow(color: Colors.black26, blurRadius: 12, offset: Offset(0, 6)),
+                    BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 12,
+                        offset: Offset(0, 6)),
                   ],
                 ),
                 child: Form(
@@ -307,7 +297,8 @@ class _InicioSesionState extends State<InicioSesion> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (widget.invernaderoIdToJoin != null || _pendingInvernadero != null)
+                      if (widget.invernaderoIdToJoin != null ||
+                          _pendingInvernadero != null)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 20),
                           child: Container(
@@ -318,7 +309,8 @@ class _InicioSesionState extends State<InicioSesion> {
                             ),
                             child: const Row(
                               children: [
-                                Icon(Icons.person_add_alt_1, color: primaryGreen),
+                                Icon(Icons.person_add_alt_1,
+                                    color: primaryGreen),
                                 SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
@@ -335,11 +327,15 @@ class _InicioSesionState extends State<InicioSesion> {
                           ),
                         ),
 
-                      const Icon(Icons.eco_rounded, color: primaryGreen, size: 64),
+                      const Icon(Icons.eco_rounded,
+                          color: primaryGreen, size: 64),
                       const SizedBox(height: 10),
                       const Text(
                         "BioSensor",
-                        style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: primaryGreen),
+                        style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                            color: primaryGreen),
                       ),
                       const Text(
                         "Control Inteligente del Invernadero",
@@ -352,15 +348,18 @@ class _InicioSesionState extends State<InicioSesion> {
                         keyboardType: TextInputType.emailAddress,
                         decoration: InputDecoration(
                           labelText: 'Correo electrónico',
-                          prefixIcon: const Icon(Icons.email_outlined, color: primaryGreen),
+                          prefixIcon: const Icon(Icons.email_outlined,
+                              color: primaryGreen),
                           focusedBorder: const OutlineInputBorder(
-                            borderSide: BorderSide(color: primaryGreen, width: 2),
+                            borderSide:
+                                BorderSide(color: primaryGreen, width: 2),
                           ),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Por favor, ingresa tu correo electrónico.'; 
+                            return 'Por favor, ingresa tu correo electrónico.';
                           }
                           return null;
                         },
@@ -372,22 +371,28 @@ class _InicioSesionState extends State<InicioSesion> {
                         obscureText: _obscure,
                         decoration: InputDecoration(
                           labelText: 'Contraseña',
-                          prefixIcon: const Icon(Icons.lock_outline, color: primaryGreen),
+                          prefixIcon: const Icon(Icons.lock_outline,
+                              color: primaryGreen),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              _obscure ? Icons.visibility_off : Icons.visibility,
+                              _obscure
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
                               color: Colors.grey,
                             ),
-                            onPressed: () => setState(() => _obscure = !_obscure),
+                            onPressed: () =>
+                                setState(() => _obscure = !_obscure),
                           ),
                           focusedBorder: const OutlineInputBorder(
-                            borderSide: BorderSide(color: primaryGreen, width: 2),
+                            borderSide:
+                                BorderSide(color: primaryGreen, width: 2),
                           ),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Por favor, ingresa tu contraseña.'; 
+                            return 'Por favor, ingresa tu contraseña.';
                           }
                           return null;
                         },
@@ -405,23 +410,29 @@ class _InicioSesionState extends State<InicioSesion> {
                                   backgroundColor: primaryGreen,
                                   foregroundColor: Colors.white,
                                   minimumSize: const Size(double.infinity, 55),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14)),
                                 ),
                                 child: isLoading
                                     ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-                                )
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2.5),
+                                      )
                                     : const Text(
-                                  'Iniciar Sesión',
-                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                                ),
+                                        'Iniciar Sesión',
+                                        style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold),
+                                      ),
                               ),
                               const SizedBox(height: 20),
                               OutlinedButton.icon(
                                 onPressed: isLoading ? null : _loginWithGoogle,
-                                icon: const Icon(Icons.g_mobiledata, size: 32, color: primaryGreen),
+                                icon: const Icon(Icons.g_mobiledata,
+                                    size: 32, color: primaryGreen),
                                 label: const Text(
                                   'Continuar con Google',
                                   style: TextStyle(
@@ -431,9 +442,11 @@ class _InicioSesionState extends State<InicioSesion> {
                                   ),
                                 ),
                                 style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(color: primaryGreen, width: 2),
+                                  side: const BorderSide(
+                                      color: primaryGreen, width: 2),
                                   minimumSize: const Size(double.infinity, 55),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14)),
                                 ),
                               ),
                             ],
@@ -450,12 +463,15 @@ class _InicioSesionState extends State<InicioSesion> {
                               Navigator.pushNamed(
                                 context,
                                 '/registrarupage',
-                                arguments: widget.invernaderoIdToJoin ?? _pendingInvernadero,
+                                arguments: widget.invernaderoIdToJoin ??
+                                    _pendingInvernadero,
                               );
                             },
                             child: const Text(
                               "Crear cuenta",
-                              style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                  color: primaryGreen,
+                                  fontWeight: FontWeight.bold),
                             ),
                           ),
                         ],

@@ -22,6 +22,30 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const String _canvasAppId = String.fromEnvironment('CANVAS_APP_ID', defaultValue: 'default-app-id');
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CUSTOM PAGE ROUTE — FadeTransition de 800ms (easeOutQuart)
+// ─────────────────────────────────────────────────────────────────────────────
+class FadePageRoute<T> extends PageRouteBuilder<T> {
+  final Widget page;
+
+  FadePageRoute({required this.page})
+      : super(
+          transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 500),
+          pageBuilder: (context, animation, secondaryAnimation) => page,
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(
+              opacity: CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutQuart,
+              ),
+              child: child,
+            );
+          },
+        );
+}
+
+
 CollectionReference<Map<String, dynamic>> publicCollection(
     String appId,
     String collection,
@@ -99,7 +123,7 @@ class BioSensorApp extends StatelessWidget {
           }
           return SensorPage(
             rtdbPath: 'sensores/data',
-            invernaderoId: invernaderoId!,
+            invernaderoId: invernaderoId,
             appId: appId, 
           );
         },
@@ -122,13 +146,17 @@ class _LaunchDeciderState extends State<LaunchDecider> {
   String? _invernaderoIdFromLink;
   late final AppLinks _appLinks;
   StreamSubscription<Uri>? _linkSub;
-  bool _isInit = false; // Bandera para asegurar que la navegación solo ocurra una vez
+  late Future<Widget> _initFuture;
 
   @override
   void initState() {
     super.initState();
-    _initDeepLinks();
-    _checkUserAndNavigate();
+    _initFuture = _initializeAppAndComputeRoute();
+  }
+
+  Future<Widget> _initializeAppAndComputeRoute() async {
+    await _initDeepLinks();
+    return await _computeNextPage();
   }
 
   // Inicializa y escucha los Deep Links
@@ -140,9 +168,7 @@ class _LaunchDeciderState extends State<LaunchDecider> {
         await _saveInvernaderoFromUri(initialLink);
       }
       _linkSub = _appLinks.uriLinkStream.listen((uri) async {
-        if (uri != null) {
-          await _saveInvernaderoFromUri(uri);
-        }
+        await _saveInvernaderoFromUri(uri);
       });
     } catch (e) {
       debugPrint('Error al procesar deep links: $e');
@@ -151,17 +177,13 @@ class _LaunchDeciderState extends State<LaunchDecider> {
 
   // Guarda el ID del invernadero detectado
   Future<void> _saveInvernaderoFromUri(Uri uri) async {
-    final id = uri.queryParameters['invernadero'] ?? uri.queryParameters['id'];
-    if (id != null && id.isNotEmpty) {
-      debugPrint('🔗 Detectado link con invernaderoId: $id');
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('pendingInvernaderoId', id);
-      // Actualiza el estado para que la lógica de navegación lo recoja si ya se ejecutó
-      setState(() => _invernaderoIdFromLink = id);
-      if (_isInit && mounted) {
-        _checkUserAndNavigate();
+      final id = uri.queryParameters['invernadero'] ?? uri.queryParameters['id'];
+      if (id != null && id.isNotEmpty) {
+        debugPrint('🔗 Detectado link con invernaderoId: $id');
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('pendingInvernaderoId', id);
+        if (mounted) setState(() => _invernaderoIdFromLink = id);
       }
-    }
   }
 
   @override
@@ -170,13 +192,11 @@ class _LaunchDeciderState extends State<LaunchDecider> {
     super.dispose();
   }
 
-  Future<void> _checkUserAndNavigate() async {
-    if (_isInit && _invernaderoIdFromLink == null) return;
-    _isInit = true;
-    await Future.delayed(const Duration(seconds: 2));
+  Future<Widget> _computeNextPage() async {
     final user = FirebaseAuth.instance.currentUser;
     final prefs = await SharedPreferences.getInstance();
     Widget nextPage;
+    
     final pendingInvernadero = _invernaderoIdFromLink?.isNotEmpty == true
         ? _invernaderoIdFromLink
         : prefs.getString('pendingInvernaderoId');
@@ -190,7 +210,6 @@ class _LaunchDeciderState extends State<LaunchDecider> {
       debugPrint('Usuario no logueado → InicioSesion');
       nextPage = InicioSesion(invernaderoIdToJoin: pendingInvernadero, appId: widget.appId);
     }
-
     // CASO 2: Usuario logueado
     else {
       final userDoc = await FirebaseFirestore.instance
@@ -204,32 +223,20 @@ class _LaunchDeciderState extends State<LaunchDecider> {
 
       final data = userDoc.data();
       final String? rol = data?['rol'];
-      final String? greenhouseId =
-          data?['greenhouseId'] ?? data?['invernaderoId'];
+      final String? greenhouseId = data?['greenhouseId'] ?? data?['invernaderoId'];
       final normalizedRol = rol?.toLowerCase() ?? '';
 
-      debugPrint(
-          ' Usuario detectado: UID=${user.uid}, rol=$normalizedRol, invernaderoId=$greenhouseId');
+      debugPrint(' Usuario detectado: UID=${user.uid}, rol=$normalizedRol, invernaderoId=$greenhouseId');
 
-      // CASO 2A: Hay una invitación pendiente (Deep Link)
       if (pendingInvernadero != null && pendingInvernadero.isNotEmpty) {
-        if ((normalizedRol == 'empleado' && greenhouseId == pendingInvernadero) ||
-            normalizedRol == 'dueño') {
+        if ((normalizedRol == 'empleado' && greenhouseId == pendingInvernadero) || normalizedRol == 'dueño') {
           await prefs.remove('pendingInvernaderoId');
           _invernaderoIdFromLink = null;
           nextPage = normalizedRol == 'dueño' ? Gestioninvernadero(appId: widget.appId) : HomePage(appId: widget.appId);
-        }
-        else if (normalizedRol.isEmpty ||
-            normalizedRol == 'pendiente' ||
-            greenhouseId == null ||
-            greenhouseId.isEmpty) {
+        } else if (normalizedRol.isEmpty || normalizedRol == 'pendiente' || greenhouseId == null || greenhouseId.isEmpty) {
           await prefs.remove('pendingInvernaderoId');
-          nextPage = SeleccionRol(
-            invernaderoIdFromLink: pendingInvernadero,
-            appId: widget.appId,
-          );
-        }
-        else {
+          nextPage = SeleccionRol(invernaderoIdFromLink: pendingInvernadero, appId: widget.appId);
+        } else {
           await prefs.remove('pendingInvernaderoId');
           _invernaderoIdFromLink = null;
           if (normalizedRol == 'dueño') {
@@ -240,11 +247,7 @@ class _LaunchDeciderState extends State<LaunchDecider> {
             nextPage = InicioSesion(appId: widget.appId);
           }
         }
-      }
-      // CASO 2B: Sin invitación pendiente (Flujo normal de inicio)
-      else if (normalizedRol.isEmpty ||
-          greenhouseId == null ||
-          greenhouseId.isEmpty) {
+      } else if (normalizedRol.isEmpty || greenhouseId == null || greenhouseId.isEmpty) {
         await FirebaseAuth.instance.signOut();
         final googleSignIn = GoogleSignIn();
         if (await googleSignIn.isSignedIn()) await googleSignIn.signOut();
@@ -252,32 +255,26 @@ class _LaunchDeciderState extends State<LaunchDecider> {
         await prefs.remove('pendingInvernaderoId');
         _invernaderoIdFromLink = null;
         nextPage = InicioSesion(appId: widget.appId);
-      }
-      else if (normalizedRol == 'dueño') {
+      } else if (normalizedRol == 'dueño') {
         nextPage = Gestioninvernadero(appId: widget.appId);
-      }
-      else if (normalizedRol == 'empleado') {
+      } else if (normalizedRol == 'empleado') {
         nextPage = HomePage(appId: widget.appId);
-      }
-      else {
+      } else {
         nextPage = InicioSesion(appId: widget.appId);
       }
+      
       if (pendingInvernadero == null) {
         await prefs.remove('pendingInvernaderoId');
         _invernaderoIdFromLink = null;
       }
     }
-    // Navegación final
-    if (mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => nextPage),
-      );
-    }
+    
+    return nextPage;
   }
 
   @override
   Widget build(BuildContext context) {
-    return SplashScreen();
+    return SplashScreen(initializationTask: _initFuture);
   }
 }
 
