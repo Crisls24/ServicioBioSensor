@@ -3,8 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:invernadero/Pages/RegistroInvernadero.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:invernadero/Pages/SideNav.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:invernadero/core/theme/app_colors.dart';
+import 'package:invernadero/core/theme/theme_notifier.dart';
 
 class Gestioninvernadero extends StatefulWidget {
   final String appId;
@@ -19,14 +21,12 @@ class _GestioninvernaderoState extends State<Gestioninvernadero> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final User? currentUser = FirebaseAuth.instance.currentUser;
   final TextEditingController _searchController = TextEditingController();
-
-  static const Color primaryGreen = Color(0xFF2E7D32);
-  static const Color accentBlue = Color(0xFF42A5F5);
+  final FocusNode _searchFocus = FocusNode();
 
   String searchQuery = '';
 
-  // FUNCIÓN AUXILIAR DE RUTA 
-  
+  // FUNCIÓN AUXILIAR DE RUTA
+
   CollectionReference<Map<String, dynamic>> _getPublicCollectionRef(
       String collectionName) {
     return _firestore
@@ -50,521 +50,621 @@ class _GestioninvernaderoState extends State<Gestioninvernadero> {
 
   void _showSnackBar(String message, IconData icon, Color color) {
     if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        backgroundColor: Colors.black.withOpacity(0.85),
+        backgroundColor: color.withValues(alpha: 0.95),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        margin: const EdgeInsets.all(20),
-        duration: const Duration(seconds: 2),
+        elevation: 10,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        margin: const EdgeInsets.all(24),
+        duration: const Duration(seconds: 3),
         content: Row(
           children: [
-            Icon(icon, color: color),
-            const SizedBox(width: 10),
-            Expanded(child: Text(message, style: const TextStyle(fontSize: 15))),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: const BoxDecoration(
+                  color: Colors.white24, shape: BoxShape.circle),
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                message,
+                style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  //  Rutas en _setAndNavigateToHome 
   Future<void> _setAndNavigateToHome(String invernaderoId) async {
     if (currentUser == null) {
-      _showSnackBar('Debe iniciar sesión para realizar esta acción.', Icons.lock, Colors.red);
+      _showSnackBar(
+          'Debe iniciar sesión.', Icons.lock_outline, Colors.redAccent);
       return;
     }
 
     try {
       await _getPublicCollectionRef('usuarios').doc(currentUser!.uid).set({
-        'invernaderoId': invernaderoId, 
+        'invernaderoId': invernaderoId,
       }, SetOptions(merge: true));
 
-      //  Navegar a la página principal usando la ruta con nombre.
       if (mounted) {
-        Navigator.pushReplacementNamed(
-          context,
-          '/home',
-        );
+        Navigator.pushReplacementNamed(context, '/home');
       }
     } catch (e) {
-      debugPrint('Error al actualizar el invernadero activo: $e');
-      _showSnackBar('Error al visitar el invernadero.', Icons.error, Colors.redAccent);
+      _showSnackBar('Error al visitar.', Icons.error_outline, Colors.redAccent);
     }
   }
 
-  void _showShareDialog(String invernaderoId, String nombreInvernadero) {
-    final enlace = 'https://biosensorapp.page.link/invitar?appId=${widget.appId}&invernadero=$invernaderoId';
-
-    showDialog(
+  // CORRECCIÓN CRÍTICA 3: Rutas en _deleteInvernadero
+  Future<void> _deleteInvernadero(String id) async {
+    final isDark = themeNotifier.isDark;
+    final confirm = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Column(
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.getCardColor(isDark),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.share_rounded, color: accentBlue, size: 40),
-            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                  color: Colors.redAccent.withValues(alpha: 0.1),
+                  shape: BoxShape.circle),
+              child: const Icon(Icons.delete_sweep_rounded,
+                  color: Colors.redAccent, size: 36),
+            ),
+            const SizedBox(height: 20),
             Text(
-              'Compartir acceso: $nombreInvernadero',
+              '¿Eliminar Invernadero?',
+              style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                  color: AppColors.getTextMain(isDark)),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Esta acción eliminará permanentemente todos los datos asociados. No se puede deshacer.',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: 18, color: accentBlue),
+              style: GoogleFonts.inter(
+                  color: AppColors.getTextSecondary(isDark),
+                  fontSize: 13,
+                  height: 1.5),
             ),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cerrar', style: TextStyle(color: Colors.grey)),
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancelar',
+                style: GoogleFonts.inter(
+                    color: AppColors.getTextSecondary(isDark),
+                    fontWeight: FontWeight.bold)),
           ),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.share, size: 18),
-            label: const Text('Compartir enlace'),
-            onPressed: () {
-              Share.share(
-                'Únete a mi invernadero "$nombreInvernadero" 🌱 en BioSensor:\n$enlace',
-                subject: 'Invitación a BioSensor',
-              );
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: accentBlue,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-          ),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.copy_rounded, size: 18),
-            label: const Text('Copiar código'),
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: invernaderoId));
-              _showSnackBar('Código copiado al portapapeles', Icons.content_copy, accentBlue);
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: accentBlue,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // CORRECCIÓN CRÍTICA 3: Rutas en _deleteInvernadero 
-  Future<void> _deleteInvernadero(String id) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Eliminar invernadero'),
-        content: const Text(
-            '¿Seguro que deseas eliminar este invernadero? Esta acción no se puede deshacer.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            child: const Text('Eliminar'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text('Eliminar',
+                style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
 
     if (confirm == true) {
-      // Eliminar el invernadero
       await _getPublicCollectionRef('invernaderos').doc(id).delete();
-      _showSnackBar('Invernadero eliminado correctamente', Icons.delete_forever, Colors.redAccent);
-      // Comprobar y actualizar el perfil del usuario si era el invernadero activo
+      _showSnackBar(
+          'Invernadero eliminado', Icons.delete_outline, Colors.redAccent);
       if (currentUser?.uid != null) {
-        final userDoc = await _getPublicCollectionRef('usuarios').doc(currentUser!.uid).get();
-        final currentActiveId = userDoc.data()?['invernaderoId'];
-        if (currentActiveId == id) {
-          await _getPublicCollectionRef('usuarios').doc(currentUser!.uid).update({
-            'invernaderoId': '', 
-          });
+        final userDoc = await _getPublicCollectionRef('usuarios')
+            .doc(currentUser!.uid)
+            .get();
+        if (userDoc.data()?['invernaderoId'] == id) {
+          await _getPublicCollectionRef('usuarios')
+              .doc(currentUser!.uid)
+              .update({'invernaderoId': ''});
         }
       }
     }
   }
 
   void _showOptionsMenu(BuildContext context, String id, String nombre) {
+    final isDark = themeNotifier.isDark;
     showModalBottomSheet(
       context: context,
+      backgroundColor: AppColors.getCardColor(isDark),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Wrap(
-            children: [
-              Center(
-                child: Container(
-                  width: 50,
-                  height: 5,
-                  decoration: BoxDecoration(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
+      builder: (_) => Container(
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
                     color: Colors.grey[400],
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: const Icon(Icons.edit_rounded, color: accentBlue),
-                title: const Text('Editar Invernadero'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showSnackBar('Función de edición próximamente', Icons.edit, accentBlue);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete_forever_rounded, color: Colors.redAccent),
-                title: const Text('Eliminar Invernadero'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _deleteInvernadero(id);
-                },
-              ),
-            ],
-          ),
+                    borderRadius: BorderRadius.circular(10))),
+            const SizedBox(height: 24),
+            Text(nombre,
+                style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18,
+                    color: AppColors.getTextMain(isDark))),
+            const SizedBox(height: 24),
+            _optionTile(Icons.people_outline_rounded,
+                'Administrar Colaboradores', AppColors.primary, isDark, () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/empleados', arguments: id);
+            }),
+            _optionTile(Icons.edit_outlined, 'Editar Información',
+                Colors.orangeAccent, isDark, () {
+              Navigator.pop(context);
+              _showSnackBar('Edición próximamente', Icons.info_outline,
+                  AppColors.primary);
+            }),
+            _optionTile(Icons.delete_outline_rounded,
+                'Eliminar Permanentemente', Colors.redAccent, isDark, () {
+              Navigator.pop(context);
+              _deleteInvernadero(id);
+            }),
+          ],
         ),
       ),
     );
   }
 
-  // Rutas en _showCollaboratorsDialog 
-  void _showCollaboratorsDialog(String invernaderoId, String nombreInvernadero) async {
-
-    final snapshot = await _getPublicCollectionRef('usuarios')
-        .where('invernaderoId', isEqualTo: invernaderoId)
-        .where('rol', isEqualTo: 'empleado')
-        .get();
-    final colaboradores = snapshot.docs;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+  Widget _optionTile(IconData icon, String title, Color color, bool isDark,
+      VoidCallback onTap) {
+    return ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(vertical: 4),
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12)),
+        child: Icon(icon, color: color, size: 22),
       ),
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            top: 16.0,
-            left: 16.0,
-            right: 16.0,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 16.0,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                height: 5,
-                width: 50,
-                decoration: BoxDecoration(
-                  color: Colors.grey[400],
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Colaboradores de $nombreInvernadero',
-                style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.bold, color: primaryGreen),
-              ),
-              const SizedBox(height: 12),
-              // Código de invitación
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Código: $invernaderoId',
-                        style: const TextStyle(fontSize: 14, color: Colors.black87),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.copy_rounded, color: accentBlue),
-                      onPressed: () {
-                        Clipboard.setData(ClipboardData(text: invernaderoId));
-                        _showSnackBar('Código copiado', Icons.copy, accentBlue);
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.share_rounded, color: primaryGreen),
-                      onPressed: () {
-                        final mensaje = '🌿 Únete a mi invernadero "$nombreInvernadero" con el código: $invernaderoId';
-                        Share.share(mensaje, subject: 'Invitación BioSensor');
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Lista de colaboradores actuales
-              if (colaboradores.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child: Text(
-                    'Aún no hay colaboradores registrados.',
-                    style: TextStyle(color: Colors.black54, fontStyle: FontStyle.italic),
-                  ),
-                )
-              else
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: colaboradores.length,
-                  itemBuilder: (context, i) {
-                    final colab = colaboradores[i].data() as Map<String, dynamic>;
-                    final nombreColab = colab['nombre'] ?? 'Sin nombre';
-                    final email = colab['email'] ?? '';
-                    return ListTile(
-                      leading: const CircleAvatar(
-                        backgroundColor: accentBlue,
-                        child: Icon(Icons.person, color: Colors.white),
-                      ),
-                      title: Text(nombreColab),
-                      subtitle: Text(email),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
-                        onPressed: () async {
-                          final colabId = colaboradores[i].id;
-                          await _getPublicCollectionRef('usuarios').doc(colabId).update({
-                            'invernaderoId': '', 
-                            'rol': 'pendiente',
-                          });
-                          Navigator.pop(context);
-                          _showSnackBar('Colaborador desvinculado', Icons.person_remove, Colors.redAccent);
-                        },
-                      ),
-                    );
-                  },
-                ),
-              const SizedBox(height: 16),
-            ],
-          ),
-        );
-      },
+      title: Text(title,
+          style: GoogleFonts.inter(
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+              color: AppColors.getTextMain(isDark))),
+      trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
     );
   }
 
-  Widget _buildInvernaderoCard(Map<String, dynamic> data) {
-    final nombre = data['nombre'] ?? 'Invernadero sin nombre';
-    final id = data['id'] ?? 'ID no disponible'; 
-    final ubicacion = data['ubicacion'] ?? 'Ubicación no registrada';
+  Widget _buildInvernaderoCard(Map<String, dynamic> data, String activeId) {
+    final nombre = data['nombre'] ?? 'Invernadero';
+    final id = data['id'] ?? '';
+    final ubicacion = data['ubicacion'] ?? 'Sin ubicación';
+    final isDark = themeNotifier.isDark;
+    final isActive = (id == activeId);
 
-    return Card(
-      elevation: 5,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Imagen y menú de opciones
-          Stack(
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      decoration: BoxDecoration(
+        color: AppColors.getCardColor(isDark),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: isActive
+            ? [
+                BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.2),
+                    blurRadius: 20,
+                    spreadRadius: 2)
+              ]
+            : AppColors.getShadow(isDark),
+        border: Border.all(
+            color: isActive ? AppColors.primary : AppColors.getBorder(isDark),
+            width: isActive ? 2.5 : 1),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: InkWell(
+          onTap: () => _setAndNavigateToHome(id),
+          splashColor: AppColors.primary.withValues(alpha: 0.1),
+          highlightColor: AppColors.primary.withValues(alpha: 0.05),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                child: Image.asset(
-                  'assets/GestionInv.jpg',
-                  height: 160,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  // Fallback para entornos sin assets
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    height: 160,
-                    width: double.infinity,
-                    color: Colors.lightGreen.shade200,
-                    alignment: Alignment.center,
-                    child: const Text('🏡\n(Placeholder)', textAlign: TextAlign.center, style: TextStyle(fontSize: 30)),
+              // Header Imagen
+              Stack(
+                children: [
+                  ShaderMask(
+                    shaderCallback: (rect) => LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.1),
+                        Colors.black.withValues(alpha: 0.7)
+                      ],
+                    ).createShader(rect),
+                    blendMode: BlendMode.darken,
+                    child: Image.asset(
+                      'assets/GestionInv.jpg',
+                      height: 160,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                          height: 160,
+                          color: AppColors.primary.withValues(alpha: 0.1)),
+                    ),
                   ),
-                ),
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => _showOptionsMenu(context, id, nombre),
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.4),
+                              shape: BoxShape.circle),
+                          child: const Icon(Icons.more_vert_rounded,
+                              color: Colors.white, size: 22),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (isActive)
+                    Positioned(
+                      top: 12,
+                      left: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  blurRadius: 8)
+                            ]),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.check_circle_rounded,
+                                color: Colors.white, size: 14),
+                            const SizedBox(width: 6),
+                            Text('EN USO',
+                                style: GoogleFonts.inter(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 1)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  Positioned(
+                    bottom: 16,
+                    left: 20,
+                    right: 20,
+                    child: Text(
+                      nombre,
+                      style: GoogleFonts.inter(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: -0.5),
+                    ),
+                  ),
+                ],
               ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.more_vert, color: Colors.white),
-                    onPressed: () => _showOptionsMenu(context, id, nombre),
-                  ),
+
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.location_on_rounded,
+                            color: AppColors.getTextSecondary(isDark)
+                                .withValues(alpha: 0.5),
+                            size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                            child: Text(ubicacion,
+                                style: GoogleFonts.inter(
+                                    color: AppColors.getTextSecondary(isDark),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500))),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? AppColors.primary.withValues(alpha: 0.1)
+                            : AppColors.primary,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.login_rounded,
+                            size: 18,
+                            color: isActive ? AppColors.primary : Colors.white,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Abrir invernadero',
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                              color:
+                                  isActive ? AppColors.primary : Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  nombre,
-                  style: const TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.bold, color: primaryGreen),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(Icons.location_on_outlined, color: Colors.grey, size: 18),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        ubicacion,
-                        style: const TextStyle(fontSize: 14, color: Colors.black54),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    // Botón Colaboradores
-                    OutlinedButton.icon(
-                      onPressed: () => _showCollaboratorsDialog(id, nombre),
-                      icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
-                      label: const Text('Colaboradores'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: accentBlue,
-                        side: const BorderSide(color: accentBlue),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                      ),
-                    ),
-                    const SizedBox(width: 8), 
-                    // Botón Visitar
-                    ElevatedButton.icon(
-                      onPressed: () => _setAndNavigateToHome(id),
-                      icon: const Icon(Icons.open_in_new_rounded, size: 20),
-                      label: const Text('Visitar'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryGreen,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (currentUser == null) {
-      return const Scaffold(body: Center(child: Text('Error: Usuario no autenticado.')));
-    }
+    if (currentUser == null)
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
-    return Scaffold(
-      drawer: Drawer(child: SideNav(currentRoute: 'gestion', appId: widget.appId)),
-      appBar: AppBar(
-        title: const Text(
-          'Mis Invernaderos',
-          style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 2,
-        centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          // Barra de búsqueda
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search),
-                hintText: 'Buscar invernadero...',
-                filled: true,
-                fillColor: Colors.grey[100],
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              onChanged: (value) => setState(() => searchQuery = value.toLowerCase()),
-            ),
-          ),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: _getPublicCollectionRef('invernaderos')
-                  .where('ownerId', isEqualTo: currentUser!.uid)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: primaryGreen));
-                }
+    return ValueListenableBuilder<bool>(
+      valueListenable: themeNotifier,
+      builder: (context, isDark, _) {
+        return Scaffold(
+          backgroundColor: AppColors.getBg(isDark),
+          drawer: Drawer(
+              child: SideNav(currentRoute: 'gestion', appId: widget.appId)),
+          body: StreamBuilder<DocumentSnapshot>(
+            stream: _getPublicCollectionRef('usuarios')
+                .doc(currentUser!.uid)
+                .snapshots(),
+            builder: (context, userSnapshot) {
+              final activeId = (userSnapshot.data?.data()
+                      as Map<String, dynamic>?)?['invernaderoId'] ??
+                  '';
 
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                }
-
-                final docs = snapshot.data?.docs ?? [];
-                final filtrados = docs.where((doc) {
-                  final data = doc.data() as Map<String, dynamic>;
-                  final nombre = (data['nombre'] ?? '').toString().toLowerCase();
-                  return nombre.contains(searchQuery);
-                }).toList();
-
-                if (filtrados.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      'No se encontraron invernaderos registrados.',
-                      style: TextStyle(fontSize: 16, color: Colors.black54),
+              return CustomScrollView(
+                physics: const BouncingScrollPhysics(),
+                slivers: [
+                  // Header Moderno
+                  SliverAppBar(
+                    pinned: true,
+                    floating: false,
+                    elevation: 0,
+                    toolbarHeight: 70,
+                    backgroundColor: AppColors.primary, // VERDE FUERTE
+                    leading: Builder(
+                      builder: (context) => IconButton(
+                        icon:
+                            const Icon(Icons.menu_rounded, color: Colors.white),
+                        onPressed: () => Scaffold.of(context).openDrawer(),
+                      ),
                     ),
-                  );
-                }
-                return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-                  itemCount: filtrados.length,
-                  itemBuilder: (context, i) {
-                    final doc = filtrados[i];
-                    final data = doc.data() as Map<String, dynamic>;
-                    final id = doc.id;
-                    return _buildInvernaderoCard(data..['id'] = id);
-                  },
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+                    title: Text(
+                      'Mis Invernaderos',
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 20,
+                        color: Colors.white,
+                      ),
+                    ),
+                    centerTitle: false,
+                  ),
 
-      // BOTÓN FLOTANTE
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => RegistroInvernaderoPage(appId: widget.appId)),
-          );
-        },
-        backgroundColor: primaryGreen,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_home_rounded),
-        label: const Text(
-          'Nuevo Invernadero',
-          style: TextStyle(fontWeight: FontWeight.bold),
+                  // Barra de Búsqueda
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      child: _buildSearchBar(isDark),
+                    ),
+                  ),
+
+                  // Listado Principal
+                  StreamBuilder<QuerySnapshot>(
+                    stream: _getPublicCollectionRef('invernaderos')
+                        .where('ownerId', isEqualTo: currentUser!.uid)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const SliverFillRemaining(
+                            child: Center(
+                                child: CircularProgressIndicator(
+                                    color: AppColors.primary)));
+                      }
+
+                      final docs = snapshot.data?.docs ?? [];
+                      final filtrados = docs.where((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        return (data['nombre'] ?? '')
+                            .toString()
+                            .toLowerCase()
+                            .contains(searchQuery);
+                      }).toList();
+
+                      if (filtrados.isEmpty) {
+                        return SliverFillRemaining(
+                            child: _buildEmptyState(isDark));
+                      }
+
+                      return SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, i) {
+                              final doc = filtrados[i];
+                              return _buildInvernaderoCard(
+                                  doc.data() as Map<String, dynamic>
+                                    ..['id'] = doc.id,
+                                  activeId);
+                            },
+                            childCount: filtrados.length,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              );
+            },
+          ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) =>
+                        RegistroInvernaderoPage(appId: widget.appId))),
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            elevation: 4,
+            icon: const Icon(Icons.add_home_work_rounded),
+            label: Text('Nuevo Invernadero',
+                style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w900, letterSpacing: 0)),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSearchBar(bool isDark) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: AppColors.getCardColor(isDark),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+            color: _searchFocus.hasFocus
+                ? AppColors.primary
+                : AppColors.getBorder(isDark),
+            width: 1.5),
+        boxShadow: _searchFocus.hasFocus
+            ? [
+                BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    blurRadius: 10,
+                    spreadRadius: 1)
+              ]
+            : [],
+      ),
+      child: TextField(
+        controller: _searchController,
+        focusNode: _searchFocus,
+        onChanged: (v) => setState(() => searchQuery = v.toLowerCase()),
+        style: GoogleFonts.inter(
+            fontSize: 14,
+            color: AppColors.getTextMain(isDark),
+            fontWeight: FontWeight.w600),
+        decoration: InputDecoration(
+          icon: Icon(Icons.search_rounded,
+              color: _searchFocus.hasFocus ? AppColors.primary : Colors.grey,
+              size: 20),
+          hintText: 'Buscar por nombre...',
+          hintStyle: GoogleFonts.inter(
+              color: Colors.grey, fontSize: 14, fontWeight: FontWeight.w500),
+          border: InputBorder.none,
+          suffixIcon: searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.close_rounded,
+                      size: 18, color: Colors.grey),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => searchQuery = '');
+                  },
+                )
+              : null,
         ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.all(40.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.05),
+                shape: BoxShape.circle),
+            child: Icon(Icons.eco_rounded,
+                size: 64, color: AppColors.primary.withValues(alpha: 0.2)),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            searchQuery.isEmpty
+                ? 'Aún no tienes invernaderos'
+                : 'No hay resultados',
+            style: GoogleFonts.inter(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: AppColors.getTextMain(isDark)),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            searchQuery.isEmpty
+                ? 'Crea tu primer espacio de cultivo para comenzar el monitoreo inteligente.'
+                : 'Intenta con otro nombre o borra el filtro.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+                fontSize: 14,
+                color: AppColors.getTextSecondary(isDark),
+                height: 1.5),
+          ),
+          if (searchQuery.isEmpty) ...[
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) =>
+                          RegistroInvernaderoPage(appId: widget.appId))),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+                elevation: 0,
+              ),
+              child: Text('Registrar Mi Primer Invernadero',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w900)),
+            ),
+          ],
+        ],
       ),
     );
   }

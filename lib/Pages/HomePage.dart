@@ -195,14 +195,8 @@ class _HomePageState extends State<HomePage> {
             backgroundColor: background,
             foregroundColor: primaryGreen,
             elevation: 0,
-            actions: [
-              IconButton(
-                onPressed: () => themeNotifier.toggleTheme(),
-                icon: Icon(
-                    isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                    color: textPrimary),
-              ),
-              const SizedBox(width: 8),
+            actions: const [
+              SizedBox(width: 8),
             ],
           ),
           drawer:
