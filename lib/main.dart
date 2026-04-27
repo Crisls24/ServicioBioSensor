@@ -19,6 +19,8 @@ import 'package:invernadero/Pages/SensoresPage.dart';
 import 'package:app_links/app_links.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:invernadero/core/theme/theme_notifier.dart';
+import 'package:invernadero/core/theme/app_colors.dart';
 
 const String _canvasAppId = String.fromEnvironment('CANVAS_APP_ID', defaultValue: 'default-app-id');
 
@@ -44,7 +46,6 @@ class FadePageRoute<T> extends PageRouteBuilder<T> {
           },
         );
 }
-
 
 CollectionReference<Map<String, dynamic>> publicCollection(
     String appId,
@@ -74,65 +75,69 @@ Future<void> main() async {
 
   FirebaseAuth.instance.setLanguageCode('es');
   await initializeDateFormatting('es');
-  // Pasar el appId a la aplicación principal
   runApp(const BioSensorApp(appId: _canvasAppId));
 }
 
 class BioSensorApp extends StatelessWidget {
   final String appId;
 
-  // Incluir el appId en el constructor
   const BioSensorApp({super.key, required this.appId});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'BioSensor',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primaryColor: const Color(0xFF388E3C),
-        colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.green).copyWith(
-          primary: const Color(0xFF388E3C),
-          secondary: const Color(0xFF2E7D32),
-        ),
-        textSelectionTheme: const TextSelectionThemeData(
-          cursorColor: Color(0xFF2E7D32),
-          selectionColor: Color(0x55388E3C),
-          selectionHandleColor: Color(0xFF388E3C),
-        ),
-      ),
-      // PUNTO DE ENTRADA LAUNCHDECIDER
-      // Pasar el appId a las rutas
-      home: LaunchDecider(appId: appId),
-      routes: {
-        '/login': (context) => InicioSesion(appId: appId),
-        '/registrarupage': (context) => CrearCuentaPage(appId: appId),
-        '/seleccionrol': (context) => SeleccionRol(appId: appId),
-        '/registrarinvernadero': (context) => RegistroInvernaderoPage(appId: appId),
-        '/home': (context) => HomePage(appId: appId),
-        '/profile': (context) => ProfilePage(appId: appId),
-        '/gestion': (context) => Gestioninvernadero(appId: appId),
-        '/reportes': (context) => ReportesHistoricosPage(appId: appId),
-        '/empleado': (context) => EmpleadosPage(appId: appId,),
-        'sensor': (context) {
-          final String? invernaderoId = ModalRoute.of(context)?.settings.arguments as String?;
-          if (invernaderoId == null) {
-            return const Scaffold(
-              body: Center(child: Text('Error: ID del Invernadero no especificado.')),
-            );
-          }
-          return SensorPage(
-            rtdbPath: 'sensores/data',
-            invernaderoId: invernaderoId,
-            appId: appId, 
-          );
-        },
+    return ValueListenableBuilder<bool>(
+      valueListenable: themeNotifier,
+      builder: (context, isDark, _) {
+        return MaterialApp(
+          title: 'BioSensor',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            useMaterial3: true,
+            brightness: isDark ? Brightness.dark : Brightness.light,
+            primaryColor: AppColors.primary,
+            scaffoldBackgroundColor: AppColors.getBg(isDark),
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: AppColors.primary,
+              brightness: isDark ? Brightness.dark : Brightness.light,
+              primary: AppColors.primary,
+            ),
+            textSelectionTheme: TextSelectionThemeData(
+              cursorColor: AppColors.primary,
+              selectionColor: AppColors.primary.withValues(alpha: 0.3),
+              selectionHandleColor: AppColors.primary,
+            ),
+          ),
+          home: LaunchDecider(appId: appId),
+          routes: {
+            '/login': (context) => InicioSesion(appId: appId),
+            '/registrarupage': (context) => CrearCuentaPage(appId: appId),
+            '/seleccionrol': (context) => SeleccionRol(appId: appId),
+            '/registrarinvernadero': (context) => RegistroInvernaderoPage(appId: appId),
+            '/home': (context) => HomePage(appId: appId),
+            '/profile': (context) => ProfilePage(appId: appId),
+            '/gestion': (context) => Gestioninvernadero(appId: appId),
+            '/reportes': (context) => ReportesHistoricosPage(appId: appId),
+            '/empleado': (context) => EmpleadosPage(appId: appId,),
+            'sensor': (context) {
+              final String? invernaderoId = ModalRoute.of(context)?.settings.arguments as String?;
+              if (invernaderoId == null) {
+                return const Scaffold(
+                  body: Center(child: Text('Error: ID del Invernadero no especificado.')),
+                );
+              }
+              return SensorPage(
+                rtdbPath: 'sensores/data',
+                invernaderoId: invernaderoId,
+                appId: appId, 
+              );
+            },
+          },
+        );
       },
     );
   }
 }
 
-// Lógica central de persistencia y navegación del embudo de registro/login.
 class LaunchDecider extends StatefulWidget {
   final String appId; 
   const LaunchDecider({super.key, required this.appId});
@@ -142,7 +147,6 @@ class LaunchDecider extends StatefulWidget {
 }
 
 class _LaunchDeciderState extends State<LaunchDecider> {
-  // Estado para el ID pendiente después de chequear la caducidad
   String? _invernaderoIdFromLink;
   late final AppLinks _appLinks;
   StreamSubscription<Uri>? _linkSub;
@@ -159,7 +163,6 @@ class _LaunchDeciderState extends State<LaunchDecider> {
     return await _computeNextPage();
   }
 
-  // Inicializa y escucha los Deep Links
   Future<void> _initDeepLinks() async {
     try {
       _appLinks = AppLinks();
@@ -175,7 +178,6 @@ class _LaunchDeciderState extends State<LaunchDecider> {
     }
   }
 
-  // Guarda el ID del invernadero detectado
   Future<void> _saveInvernaderoFromUri(Uri uri) async {
       final id = uri.queryParameters['invernadero'] ?? uri.queryParameters['id'];
       if (id != null && id.isNotEmpty) {
@@ -201,17 +203,11 @@ class _LaunchDeciderState extends State<LaunchDecider> {
         ? _invernaderoIdFromLink
         : prefs.getString('pendingInvernaderoId');
 
-    debugPrint('Revisando usuario y link pendiente → $pendingInvernadero');
-
-    // CASO 1: Usuario NO logueado
     if (user == null) {
       _invernaderoIdFromLink = null;
       await prefs.remove('pendingInvernaderoId');
-      debugPrint('Usuario no logueado → InicioSesion');
       nextPage = InicioSesion(invernaderoIdToJoin: pendingInvernadero, appId: widget.appId);
-    }
-    // CASO 2: Usuario logueado
-    else {
+    } else {
       final userDoc = await FirebaseFirestore.instance
           .collection('artifacts')
           .doc(widget.appId)
@@ -225,8 +221,6 @@ class _LaunchDeciderState extends State<LaunchDecider> {
       final String? rol = data?['rol'];
       final String? greenhouseId = data?['greenhouseId'] ?? data?['invernaderoId'];
       final normalizedRol = rol?.toLowerCase() ?? '';
-
-      debugPrint(' Usuario detectado: UID=${user.uid}, rol=$normalizedRol, invernaderoId=$greenhouseId');
 
       if (pendingInvernadero != null && pendingInvernadero.isNotEmpty) {
         if ((normalizedRol == 'empleado' && greenhouseId == pendingInvernadero) || normalizedRol == 'dueño') {
@@ -278,30 +272,20 @@ class _LaunchDeciderState extends State<LaunchDecider> {
   }
 }
 
-// Cerrar sesión global
 Future<void> cerrarSesion(BuildContext context, String appId) async {
   try {
     await FirebaseAuth.instance.signOut();
-
     final googleSignIn = GoogleSignIn();
-    if (await googleSignIn.isSignedIn()) {
-      await googleSignIn.signOut();
-    }
-
-    // Limpiar el ID pendiente al cerrar sesión de forma global.
+    if (await googleSignIn.isSignedIn()) await googleSignIn.signOut();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('pendingInvernaderoId');
-
     if (context.mounted) {
-      // Reemplaza toda la pila de navegación y vuelve al decider
-      // CORRECCIÓN CLAVE: Pasamos el appId a InicioSesion
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => InicioSesion(appId: appId)),
-            (route) => false,
+        (route) => false,
       );
     }
   } catch (e) {
     debugPrint('Error al cerrar sesión: $e');
   }
 }
-

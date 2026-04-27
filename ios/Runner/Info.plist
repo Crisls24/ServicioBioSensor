@@ -47,5 +47,9 @@
 		<true/>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Necesitamos tu ubicación para configurar la ciudad de tu invernadero automáticamente.</string>
+		<key>NSLocationAlwaysUsageDescription</key>
+		<string>Necesitamos tu ubicación para configurar la ciudad de tu invernadero automáticamente.</string>
 	</dict>
 </plist>

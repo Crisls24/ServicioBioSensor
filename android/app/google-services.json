@@ -23,6 +23,22 @@
           }
         },
         {
+          "client_id": "604035653454-gbfm7hlmqaept7lpe5chfr1n9dm7pnih.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.invernadero",
+            "certificate_hash": "12cb41fcc1ba0010d0b37bf2161831ce39b953a5"
+          }
+        },
+        {
+          "client_id": "604035653454-i6degbvaiv7hu5gv333u7n9eshgu0kpv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.invernadero",
+            "certificate_hash": "2cc3b400d05f6fb2b5e048acb25d26e049ce4e37"
+          }
+        },
+        {
           "client_id": "604035653454-4af26sfhkmdc31kkip8kio81272f6bbe.apps.googleusercontent.com",
           "client_type": 3
         }

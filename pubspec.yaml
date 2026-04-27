@@ -27,6 +27,8 @@ dependencies:
   intl: ^0.18.1
   url_launcher: ^6.3.0
   confetti: ^0.7.0
+  geolocator: ^13.0.1
+  geocoding: ^3.0.0
 
 
 dev_dependencies:
