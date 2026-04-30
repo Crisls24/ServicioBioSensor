@@ -39,7 +39,9 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/Logoapp.jpg"
+  image_path: "assets/logo_appv21.png"
+  adaptive_icon_foreground: "assets/logo_appv21.png"
+  adaptive_icon_background: "#FAF8F2"
 
 flutter:
 
@@ -58,6 +60,8 @@ flutter:
     - assets/pimiento.jpg
     - assets/tomate.jpg
     - assets/Google_Logo.png
+    - assets/GestionInv2.png
+
 
 flutter_native_splash:
   color: "#0A0A0A" # Fondo oscuro BioTech Premium

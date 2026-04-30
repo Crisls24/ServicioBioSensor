@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:invernadero/Pages/HomePage.dart';
+import 'package:invernadero/Pages/GestionInvernadero.dart';
+import 'package:invernadero/Pages/SeleccionRol.dart';
 import 'package:invernadero/core/theme/app_colors.dart';
 import 'package:invernadero/core/theme/theme_notifier.dart';
 import 'package:geolocator/geolocator.dart';
@@ -202,6 +204,59 @@ class _RegistroInvernaderoPageState extends State<RegistroInvernaderoPage> {
     }
   }
 
+  Future<void> _handleBackNavigation() async {
+    if (!mounted) return;
+    if (currentUser == null) {
+      Navigator.pop(context);
+      return;
+    }
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('artifacts')
+          .doc(widget.appId)
+          .collection('public')
+          .doc('data')
+          .collection('usuarios')
+          .doc(currentUser!.uid)
+          .get();
+
+      final data = doc.data() ?? {};
+      final String normalizedRol =
+          (data['rol'] as String?)?.toLowerCase() ?? '';
+      final String? invernaderoId =
+          (data['invernaderoId'] as String?)?.trim().isNotEmpty == true
+              ? (data['invernaderoId'] as String?)
+              : (data['greenhouseId'] as String?)?.trim().isNotEmpty == true
+                  ? (data['greenhouseId'] as String?)
+                  : null;
+
+      if (normalizedRol == 'dueño') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+              builder: (_) => Gestioninvernadero(appId: widget.appId)),
+        );
+        return;
+      }
+
+      if (normalizedRol == 'empleado') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => HomePage(appId: widget.appId)),
+        );
+        return;
+      }
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => SeleccionRol(appId: widget.appId)),
+      );
+    } catch (e) {
+      Navigator.pop(context);
+    }
+  }
+
   void _showSnackBar(String message, IconData icon, Color color,
       {String? actionLabel, VoidCallback? onAction}) {
     if (!mounted) return;
@@ -262,7 +317,7 @@ class _RegistroInvernaderoPageState extends State<RegistroInvernaderoPage> {
                     leading: IconButton(
                       icon: Icon(Icons.arrow_back_ios_new_rounded,
                           color: textPrimary, size: 20),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: _handleBackNavigation,
                     ),
                     title: (opacity > 0.6 || isFocused)
                         ? Text("Configuración",

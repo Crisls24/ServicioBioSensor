@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:flutter/services.dart';
 import 'package:invernadero/Pages/RegistroInvernadero.dart';
 import 'package:invernadero/Pages/SideNav.dart';
@@ -258,16 +259,16 @@ class _GestioninvernaderoState extends State<Gestioninvernadero> {
     final isActive = (id == activeId);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: AppColors.getCardColor(isDark),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: isActive
             ? [
                 BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.2),
-                    blurRadius: 20,
-                    spreadRadius: 2)
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    blurRadius: 14,
+                    spreadRadius: 1)
               ]
             : AppColors.getShadow(isDark),
         border: Border.all(
@@ -275,7 +276,7 @@ class _GestioninvernaderoState extends State<Gestioninvernadero> {
             width: isActive ? 2.5 : 1),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         child: InkWell(
           onTap: () => _setAndNavigateToHome(id),
           splashColor: AppColors.primary.withValues(alpha: 0.1),
@@ -297,12 +298,12 @@ class _GestioninvernaderoState extends State<Gestioninvernadero> {
                     ).createShader(rect),
                     blendMode: BlendMode.darken,
                     child: Image.asset(
-                      'assets/GestionInv.jpg',
-                      height: 160,
+                      'assets/GestionInv2.png',
+                      height: 110,
                       width: double.infinity,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Container(
-                          height: 160,
+                          height: 110,
                           color: AppColors.primary.withValues(alpha: 0.1)),
                     ),
                   ),
@@ -373,7 +374,7 @@ class _GestioninvernaderoState extends State<Gestioninvernadero> {
               ),
 
               Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   children: [
                     Row(
@@ -381,20 +382,22 @@ class _GestioninvernaderoState extends State<Gestioninvernadero> {
                         Icon(Icons.location_on_rounded,
                             color: AppColors.getTextSecondary(isDark)
                                 .withValues(alpha: 0.5),
-                            size: 16),
-                        const SizedBox(width: 8),
+                            size: 14),
+                        const SizedBox(width: 6),
                         Expanded(
                             child: Text(ubicacion,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.inter(
                                     color: AppColors.getTextSecondary(isDark),
-                                    fontSize: 13,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.w500))),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 10),
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
                         color: isActive
                             ? AppColors.primary.withValues(alpha: 0.1)
@@ -406,15 +409,15 @@ class _GestioninvernaderoState extends State<Gestioninvernadero> {
                         children: [
                           Icon(
                             Icons.login_rounded,
-                            size: 18,
+                            size: 16,
                             color: isActive ? AppColors.primary : Colors.white,
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 8),
                           Text(
                             'Abrir invernadero',
                             style: GoogleFonts.inter(
                               fontWeight: FontWeight.w800,
-                              fontSize: 15,
+                              fontSize: 13,
                               color:
                                   isActive ? AppColors.primary : Colors.white,
                             ),
@@ -440,116 +443,134 @@ class _GestioninvernaderoState extends State<Gestioninvernadero> {
     return ValueListenableBuilder<bool>(
       valueListenable: themeNotifier,
       builder: (context, isDark, _) {
+        final background = AppColors.getBg(isDark);
+        final textPrimary = AppColors.getTextMain(isDark);
+
         return Scaffold(
-          backgroundColor: AppColors.getBg(isDark),
-          drawer: Drawer(
-              child: SideNav(currentRoute: 'gestion', appId: widget.appId)),
-          body: StreamBuilder<DocumentSnapshot>(
-            stream: _getPublicCollectionRef('usuarios')
-                .doc(currentUser!.uid)
-                .snapshots(),
-            builder: (context, userSnapshot) {
-              final activeId = (userSnapshot.data?.data()
-                      as Map<String, dynamic>?)?['invernaderoId'] ??
-                  '';
+            extendBodyBehindAppBar: true,
+            backgroundColor: background,
+            floatingActionButton: FloatingActionButton.extended(
+              onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) =>
+                          RegistroInvernaderoPage(appId: widget.appId))),
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 4,
+              icon: const Icon(Icons.add_home_work_rounded),
+              label: Text('Nuevo Invernadero',
+                  style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w900, letterSpacing: 0)),
+            ),
+            appBar: PreferredSize(
+              preferredSize: const Size.fromHeight(64),
+              child: AppBar(
+                backgroundColor: background.withValues(alpha: 0.92),
+                elevation: 0,
+                foregroundColor: AppColors.primary,
+                flexibleSpace: ClipRRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+                    child: Container(color: Colors.transparent),
+                  ),
+                ),
+                leading: Builder(
+                  builder: (context) => IconButton(
+                    icon: const Icon(Icons.menu_rounded),
+                    color: AppColors.primary,
+                    onPressed: () => Scaffold.of(context).openDrawer(),
+                  ),
+                ),
+                title: Text(
+                  'Mis Invernaderos',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 20,
+                    color: textPrimary,
+                  ),
+                ),
+                centerTitle: false,
+              ),
+            ),
+            drawer: Drawer(
+                backgroundColor: background,
+                child: SideNav(currentRoute: 'gestion', appId: widget.appId)),
+            body: Padding(
+              padding: EdgeInsets.only(
+                top: MediaQuery.paddingOf(context).top + 64,
+              ),
+              child: StreamBuilder<DocumentSnapshot>(
+                stream: _getPublicCollectionRef('usuarios')
+                    .doc(currentUser!.uid)
+                    .snapshots(),
+                builder: (context, userSnapshot) {
+                final activeId = (userSnapshot.data?.data()
+                        as Map<String, dynamic>?)?['invernaderoId'] ??
+                    '';
 
-              return CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  // Header Moderno
-                  SliverAppBar(
-                    pinned: true,
-                    floating: false,
-                    elevation: 0,
-                    toolbarHeight: 70,
-                    backgroundColor: AppColors.primary, // VERDE FUERTE
-                    leading: Builder(
-                      builder: (context) => IconButton(
-                        icon:
-                            const Icon(Icons.menu_rounded, color: Colors.white),
-                        onPressed: () => Scaffold.of(context).openDrawer(),
+                return CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    // Barra de Búsqueda
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                        child: _buildSearchBar(isDark),
                       ),
                     ),
-                    title: Text(
-                      'Mis Invernaderos',
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 20,
-                        color: Colors.white,
-                      ),
-                    ),
-                    centerTitle: false,
-                  ),
 
-                  // Barra de Búsqueda
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                      child: _buildSearchBar(isDark),
-                    ),
-                  ),
+                    // Listado Principal
+                    StreamBuilder<QuerySnapshot>(
+                      stream: _getPublicCollectionRef('invernaderos')
+                          .where('ownerId', isEqualTo: currentUser!.uid)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const SliverFillRemaining(
+                              child: Center(
+                                  child: CircularProgressIndicator(
+                                      color: AppColors.primary)));
+                        }
 
-                  // Listado Principal
-                  StreamBuilder<QuerySnapshot>(
-                    stream: _getPublicCollectionRef('invernaderos')
-                        .where('ownerId', isEqualTo: currentUser!.uid)
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const SliverFillRemaining(
-                            child: Center(
-                                child: CircularProgressIndicator(
-                                    color: AppColors.primary)));
-                      }
+                        final docs = snapshot.data?.docs ?? [];
+                        // TODO: support fuzzy search improvements in a future UI pass.
+                        final filtrados = docs.where((doc) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          final nombre =
+                              (data['nombre'] ?? '').toString().toLowerCase();
+                          final ubicacion =
+                              (data['ubicacion'] ?? '').toString().toLowerCase();
+                          return nombre.contains(searchQuery) ||
+                              ubicacion.contains(searchQuery);
+                        }).toList();
 
-                      final docs = snapshot.data?.docs ?? [];
-                      final filtrados = docs.where((doc) {
-                        final data = doc.data() as Map<String, dynamic>;
-                        return (data['nombre'] ?? '')
-                            .toString()
-                            .toLowerCase()
-                            .contains(searchQuery);
-                      }).toList();
+                        if (filtrados.isEmpty) {
+                          return SliverFillRemaining(
+                              child: _buildEmptyState(isDark));
+                        }
 
-                      if (filtrados.isEmpty) {
-                        return SliverFillRemaining(
-                            child: _buildEmptyState(isDark));
-                      }
-
-                      return SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                        sliver: SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, i) {
-                              final doc = filtrados[i];
-                              return _buildInvernaderoCard(
-                                  doc.data() as Map<String, dynamic>
-                                    ..['id'] = doc.id,
-                                  activeId);
-                            },
-                            childCount: filtrados.length,
+                        return SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, i) {
+                                final doc = filtrados[i];
+                                return _buildInvernaderoCard(
+                                    doc.data() as Map<String, dynamic>
+                                      ..['id'] = doc.id,
+                                    activeId);
+                              },
+                              childCount: filtrados.length,
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              );
-            },
-          ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) =>
-                        RegistroInvernaderoPage(appId: widget.appId))),
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            elevation: 4,
-            icon: const Icon(Icons.add_home_work_rounded),
-            label: Text('Nuevo Invernadero',
-                style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w900, letterSpacing: 0)),
+                        );
+                      },
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         );
       },
@@ -565,13 +586,14 @@ class _GestioninvernaderoState extends State<Gestioninvernadero> {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
             color: _searchFocus.hasFocus
-                ? AppColors.primary
+                ? AppColors.getTextMain(isDark).withValues(alpha: 0.35)
                 : AppColors.getBorder(isDark),
             width: 1.5),
         boxShadow: _searchFocus.hasFocus
             ? [
                 BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.1),
+                    color:
+                        AppColors.getTextMain(isDark).withValues(alpha: 0.08),
                     blurRadius: 10,
                     spreadRadius: 1)
               ]
@@ -589,7 +611,7 @@ class _GestioninvernaderoState extends State<Gestioninvernadero> {
           icon: Icon(Icons.search_rounded,
               color: _searchFocus.hasFocus ? AppColors.primary : Colors.grey,
               size: 20),
-          hintText: 'Buscar por nombre...',
+          hintText: 'Buscar por nombre o ciudad...',
           hintStyle: GoogleFonts.inter(
               color: Colors.grey, fontSize: 14, fontWeight: FontWeight.w500),
           border: InputBorder.none,

@@ -13,7 +13,8 @@ final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
 // FUNCIÓN AUXILIAR DE REFERENCIA (Colección por Niveles)
 // Define el helper local para obtener la CollectionReference de datos públicos.
-CollectionReference _getPublicCollectionRef(String appId, String collectionName) {
+CollectionReference _getPublicCollectionRef(
+    String appId, String collectionName) {
   return _firestore
       .collection('artifacts')
       .doc(appId)
@@ -22,9 +23,8 @@ CollectionReference _getPublicCollectionRef(String appId, String collectionName)
       .collection(collectionName);
 }
 
-
 class AuthLinkWrapper extends StatefulWidget {
-  final String appId; 
+  final String appId;
 
   const AuthLinkWrapper({super.key, required this.appId});
 
@@ -91,6 +91,50 @@ class _AuthLinkWrapperState extends State<AuthLinkWrapper> {
     }
   }
 
+  String _normalizeRole(String? role) => role?.toLowerCase() ?? '';
+
+  String? _resolveInvernaderoId(Map<String, dynamic>? data) {
+    final invernaderoId = (data?['invernaderoId'] as String?)?.trim();
+    if (invernaderoId?.isNotEmpty == true) return invernaderoId;
+    final greenhouseId = (data?['greenhouseId'] as String?)?.trim();
+    if (greenhouseId?.isNotEmpty == true) return greenhouseId;
+    return null;
+  }
+
+  Widget _buildLandingForUser(
+      String? role, String? invernaderoId, String? pendingLink) {
+    final normalizedRole = _normalizeRole(role);
+    final hasInvernadero = invernaderoId?.isNotEmpty == true;
+
+    if (pendingLink != null && pendingLink.isNotEmpty) {
+      if (normalizedRole == 'dueño') {
+        return hasInvernadero
+            ? HomePage(appId: widget.appId)
+            : Gestioninvernadero(appId: widget.appId);
+      }
+      if (normalizedRole == 'empleado') {
+        return hasInvernadero
+            ? HomePage(appId: widget.appId)
+            : SeleccionRol(
+                invernaderoIdFromLink: pendingLink, appId: widget.appId);
+      }
+      return SeleccionRol(
+          invernaderoIdFromLink: pendingLink, appId: widget.appId);
+    }
+
+    if (normalizedRole == 'dueño') {
+      return hasInvernadero
+          ? HomePage(appId: widget.appId)
+          : Gestioninvernadero(appId: widget.appId);
+    }
+    if (normalizedRole == 'empleado') {
+      return hasInvernadero
+          ? HomePage(appId: widget.appId)
+          : SeleccionRol(appId: widget.appId);
+    }
+    return SeleccionRol(appId: widget.appId);
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = _auth.currentUser;
@@ -119,42 +163,25 @@ class _AuthLinkWrapperState extends State<AuthLinkWrapper> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             backgroundColor: Colors.white,
-            body: Center(child: CircularProgressIndicator(color: Color(0xFF2E7D32))),
+            body: Center(
+                child: CircularProgressIndicator(color: Color(0xFF2E7D32))),
           );
         }
 
         if (snapshot.hasError) {
-          log('Error al cargar perfil de usuario (CollectionRef): ${snapshot.error}', name: 'FirestoreDebug');
+          log('Error al cargar perfil de usuario (CollectionRef): ${snapshot.error}',
+              name: 'FirestoreDebug');
           return Scaffold(
-            body: Center(child: Text('Error de carga o permisos: ${snapshot.error}')),
+            body: Center(
+                child: Text('Error de carga o permisos: ${snapshot.error}')),
           );
         }
         final data = snapshot.data?.data() as Map<String, dynamic>?;
         final rol = data?['rol'];
+        final invernaderoId = _resolveInvernaderoId(data);
 
-        // USUARIO SIN ROL ASIGNADO
-        if (data == null || rol == null || rol.isEmpty) {
-          log('Usuario autenticado sin rol. Redirigiendo a selección de rol.', name: 'AuthFlow');
-          return SeleccionRol(
-            invernaderoIdFromLink: _invernaderoIdFromLink,
-            appId: widget.appId,
-          );
-        }
-        // USUARIO CON ROL ASIGNADO
-        if (rol == 'dueño') {
-          log('Usuario autenticado como dueño. Redirigiendo a GestiónInvernadero.', name: 'AuthFlow');
-          return Gestioninvernadero(appId: widget.appId);
-        } else if (rol == 'empleado') {
-          log('Usuario autenticado como empleado. Redirigiendo a HomePage.', name: 'AuthFlow');
-          return HomePage(appId: widget.appId);
-        } else {
-          // Rol inesperado, volvemos a selección de rol por seguridad.
-          log('Usuario autenticado con rol desconocido ($rol). Redirigiendo a selección de rol.', name: 'AuthFlow');
-          return SeleccionRol(
-            invernaderoIdFromLink: _invernaderoIdFromLink,
-            appId: widget.appId,
-          );
-        }
+        return _buildLandingForUser(
+            rol as String?, invernaderoId, _invernaderoIdFromLink);
       },
     );
   }

@@ -6,8 +6,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:invernadero/Pages/SeleccionRol.dart';
-import 'package:invernadero/Pages/GestionInvernadero.dart';
 import 'package:invernadero/Pages/HomePage.dart';
+import 'package:invernadero/Pages/GestionInvernadero.dart';
 import 'package:invernadero/core/theme/app_colors.dart';
 import 'package:invernadero/core/theme/theme_notifier.dart';
 
@@ -26,15 +26,15 @@ class InicioSesion extends StatefulWidget {
 }
 
 class _InicioSesionState extends State<InicioSesion>
-    with TickerProviderStateMixin, WidgetsBindingObserver { 
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  
+
   final _emailFocus = FocusNode();
   final _passFocus = FocusNode();
   final ValueNotifier<bool> _isFocused = ValueNotifier(false);
-  
+
   final ValueNotifier<bool> _loadingNotifier = ValueNotifier(false);
   bool _obscure = true;
 
@@ -50,7 +50,7 @@ class _InicioSesionState extends State<InicioSesion>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    
+
     _entranceCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -59,10 +59,10 @@ class _InicioSesionState extends State<InicioSesion>
       vsync: this,
       duration: const Duration(seconds: 4),
     )..repeat(reverse: true);
-    
+
     _emailFocus.addListener(_onFocusChange);
     _passFocus.addListener(_onFocusChange);
-    
+
     _entranceCtrl.forward();
     _loadPendingInvernadero();
   }
@@ -128,7 +128,9 @@ class _InicioSesionState extends State<InicioSesion>
       if (user != null) await _navigateAfterLogin(user);
     } on FirebaseAuthException catch (e) {
       String msg = 'Error de acceso. Por favor verifica tus datos.';
-      if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
+      if (e.code == 'user-not-found' ||
+          e.code == 'wrong-password' ||
+          e.code == 'invalid-credential') {
         msg = 'Correo o contraseña incorrectos.';
       } else if (e.code == 'user-disabled') {
         msg = 'Cuenta deshabilitada. Contacta soporte.';
@@ -138,17 +140,23 @@ class _InicioSesionState extends State<InicioSesion>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(msg, style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600)),
+            content: Text(msg,
+                style: GoogleFonts.inter(
+                    color: Colors.white, fontWeight: FontWeight.w600)),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error inesperado: $e', style: GoogleFonts.inter(color: Colors.white)), backgroundColor: AppColors.error),
+          SnackBar(
+              content: Text('Error inesperado: $e',
+                  style: GoogleFonts.inter(color: Colors.white)),
+              backgroundColor: AppColors.error),
         );
       }
     } finally {
@@ -176,7 +184,8 @@ class _InicioSesionState extends State<InicioSesion>
       final user = userCredential.user;
 
       if (user != null) {
-        final savedInvernadero = widget.invernaderoIdToJoin ?? _pendingInvernadero;
+        final savedInvernadero =
+            widget.invernaderoIdToJoin ?? _pendingInvernadero;
         final userRef = _getUserProfileRef(user.uid);
         final doc = await userRef.get();
 
@@ -195,7 +204,10 @@ class _InicioSesionState extends State<InicioSesion>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error con Google: $e', style: GoogleFonts.inter(color: Colors.white)), backgroundColor: AppColors.error),
+          SnackBar(
+              content: Text('Error con Google: $e',
+                  style: GoogleFonts.inter(color: Colors.white)),
+              backgroundColor: AppColors.error),
         );
       }
     } finally {
@@ -213,41 +225,52 @@ class _InicioSesionState extends State<InicioSesion>
     if (!mounted) return;
 
     final String normalizedRol = (data['rol'] as String?)?.toLowerCase() ?? '';
-    final String invernaderoIdExistente = (data['invernaderoId'] as String?) ?? (data['greenhouseId'] as String?) ?? '';
-    final String? invernaderoToJoin = widget.invernaderoIdToJoin?.isNotEmpty == true ? widget.invernaderoIdToJoin : _pendingInvernadero;
+    final String? sourceId =
+        (data['invernaderoId'] as String?)?.trim().isNotEmpty == true
+            ? (data['invernaderoId'] as String?)
+            : (data['greenhouseId'] as String?)?.trim().isNotEmpty == true
+                ? (data['greenhouseId'] as String?)
+                : null;
+    final String invernaderoIdExistente = sourceId ?? '';
+    final String? invernaderoToJoin =
+        widget.invernaderoIdToJoin?.isNotEmpty == true
+            ? widget.invernaderoIdToJoin
+            : _pendingInvernadero;
 
-    if (invernaderoToJoin != null && invernaderoToJoin.isNotEmpty) {
-      if (normalizedRol == 'empleado' && invernaderoIdExistente == invernaderoToJoin) {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomePage(appId: widget.appId)));
-        return;
-      }
-      if (normalizedRol.isEmpty || normalizedRol == 'pendiente') {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => SeleccionRol(invernaderoIdFromLink: invernaderoToJoin, appId: widget.appId)));
-        return;
-      }
-      if (normalizedRol == 'dueño') {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => Gestioninvernadero(appId: widget.appId)));
-        return;
-      }
-    }
-
-    if (normalizedRol.isEmpty || normalizedRol == 'pendiente') {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => SeleccionRol(appId: widget.appId)));
-      return;
-    }
     if (normalizedRol == 'dueño') {
       if (invernaderoIdExistente.isNotEmpty) {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => Gestioninvernadero(appId: widget.appId)));
+        Navigator.pushReplacement(context,
+            MaterialPageRoute(builder: (_) => HomePage(appId: widget.appId)));
       } else {
-        Navigator.pushReplacementNamed(context, '/registrarinvernadero');
+        Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (_) => Gestioninvernadero(appId: widget.appId)));
       }
       return;
     }
+
     if (normalizedRol == 'empleado') {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomePage(appId: widget.appId)));
+      if (invernaderoIdExistente.isNotEmpty) {
+        Navigator.pushReplacement(context,
+            MaterialPageRoute(builder: (_) => HomePage(appId: widget.appId)));
+      } else {
+        Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (_) => SeleccionRol(
+                    invernaderoIdFromLink: invernaderoToJoin,
+                    appId: widget.appId)));
+      }
       return;
     }
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => SeleccionRol(appId: widget.appId)));
+
+    Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+            builder: (_) => SeleccionRol(
+                invernaderoIdFromLink: invernaderoToJoin,
+                appId: widget.appId)));
   }
 
   @override
@@ -265,14 +288,24 @@ class _InicioSesionState extends State<InicioSesion>
         final double blurIntensity = isDark ? 4.5 : 2.0;
 
         final fadeHeader = Tween<double>(begin: 0.0, end: 1.0).animate(
-            CurvedAnimation(parent: _entranceCtrl, curve: const Interval(0.0, 0.4, curve: Curves.easeOut)));
-        final slideHeader = Tween<Offset>(begin: const Offset(0, 0.05), end: Offset.zero).animate(
-            CurvedAnimation(parent: _entranceCtrl, curve: const Interval(0.0, 0.4, curve: Curves.easeOutCubic)));
+            CurvedAnimation(
+                parent: _entranceCtrl,
+                curve: const Interval(0.0, 0.4, curve: Curves.easeOut)));
+        final slideHeader = Tween<Offset>(
+                begin: const Offset(0, 0.05), end: Offset.zero)
+            .animate(CurvedAnimation(
+                parent: _entranceCtrl,
+                curve: const Interval(0.0, 0.4, curve: Curves.easeOutCubic)));
 
         final fadeInputs = Tween<double>(begin: 0.0, end: 1.0).animate(
-            CurvedAnimation(parent: _entranceCtrl, curve: const Interval(0.3, 1.0, curve: Curves.easeOut)));
-        final slideInputs = Tween<Offset>(begin: const Offset(0, 0.02), end: Offset.zero).animate(
-            CurvedAnimation(parent: _entranceCtrl, curve: const Interval(0.3, 1.0, curve: Curves.easeOutCubic)));
+            CurvedAnimation(
+                parent: _entranceCtrl,
+                curve: const Interval(0.3, 1.0, curve: Curves.easeOut)));
+        final slideInputs = Tween<Offset>(
+                begin: const Offset(0, 0.02), end: Offset.zero)
+            .animate(CurvedAnimation(
+                parent: _entranceCtrl,
+                curve: const Interval(0.3, 1.0, curve: Curves.easeOutCubic)));
 
         return Scaffold(
           backgroundColor: background,
@@ -295,7 +328,9 @@ class _InicioSesionState extends State<InicioSesion>
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppColors.primary.withValues(alpha: (isDark ? 0.08 : 0.04) * _glowCtrl.value),
+                                  color: AppColors.primary.withValues(
+                                      alpha: (isDark ? 0.08 : 0.04) *
+                                          _glowCtrl.value),
                                   blurRadius: 100,
                                   spreadRadius: 10,
                                 ),
@@ -313,7 +348,9 @@ class _InicioSesionState extends State<InicioSesion>
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppColors.primary.withValues(alpha: (isDark ? 0.05 : 0.03) * (1 - _glowCtrl.value)),
+                                  color: AppColors.primary.withValues(
+                                      alpha: (isDark ? 0.05 : 0.03) *
+                                          (1 - _glowCtrl.value)),
                                   blurRadius: 80,
                                   spreadRadius: 8,
                                 ),
@@ -326,7 +363,6 @@ class _InicioSesionState extends State<InicioSesion>
                   },
                 ),
               ),
-
               Positioned(
                 top: 50,
                 right: 20,
@@ -335,49 +371,58 @@ class _InicioSesionState extends State<InicioSesion>
                   child: IconButton(
                     onPressed: () => themeNotifier.toggleTheme(),
                     icon: Icon(
-                      isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                      isDark
+                          ? Icons.light_mode_rounded
+                          : Icons.dark_mode_rounded,
                       color: isDark ? Colors.white : AppColors.primary,
                       size: 28,
                     ),
                   ),
                 ),
               ),
-
               SafeArea(
                 child: Center(
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24.0, vertical: 20.0),
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 440),
                       child: Column(
                         children: [
-                          if (widget.invernaderoIdToJoin != null || _pendingInvernadero != null)
+                          if (widget.invernaderoIdToJoin != null ||
+                              _pendingInvernadero != null)
                             FadeTransition(
                               opacity: fadeHeader,
                               child: Container(
                                 margin: const EdgeInsets.only(bottom: 24),
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.08),
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.08),
                                   borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                                  border: Border.all(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.2)),
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.mark_email_read_rounded, color: AppColors.primary, size: 22),
+                                    const Icon(Icons.mark_email_read_rounded,
+                                        color: AppColors.primary, size: 22),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Text(
                                         'Has sido invitado. Inicia sesión para unirte.',
-                                        style: GoogleFonts.inter(color: labelColor, fontWeight: FontWeight.w600, fontSize: 13),
+                                        style: GoogleFonts.inter(
+                                            color: labelColor,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
                             ),
-
                           FadeTransition(
                             opacity: fadeHeader,
                             child: SlideTransition(
@@ -410,7 +455,6 @@ class _InicioSesionState extends State<InicioSesion>
                             ),
                           ),
                           const SizedBox(height: 32),
-
                           FadeTransition(
                             opacity: fadeInputs,
                             child: SlideTransition(
@@ -423,9 +467,10 @@ class _InicioSesionState extends State<InicioSesion>
                                     builder: (context, focused, child) {
                                       return BackdropFilter(
                                         filter: ImageFilter.blur(
-                                          sigmaX: focused ? 0.0 : blurIntensity, 
-                                          sigmaY: focused ? 0.0 : blurIntensity
-                                        ),
+                                            sigmaX:
+                                                focused ? 0.0 : blurIntensity,
+                                            sigmaY:
+                                                focused ? 0.0 : blurIntensity),
                                         child: child!,
                                       );
                                     },
@@ -434,11 +479,13 @@ class _InicioSesionState extends State<InicioSesion>
                                       decoration: BoxDecoration(
                                         color: cardColor,
                                         borderRadius: BorderRadius.circular(24),
-                                        border: Border.all(color: borderColor, width: 1.0),
+                                        border: Border.all(
+                                            color: borderColor, width: 1.0),
                                         boxShadow: [
                                           if (!isDark)
                                             BoxShadow(
-                                              color: Colors.black.withValues(alpha: 0.05),
+                                              color: Colors.black
+                                                  .withValues(alpha: 0.05),
                                               blurRadius: 20,
                                               offset: const Offset(0, 10),
                                             ),
@@ -447,7 +494,8 @@ class _InicioSesionState extends State<InicioSesion>
                                       child: Form(
                                         key: _formKey,
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
                                           children: [
                                             _buildLabel("ACCESO", labelColor),
                                             _buildTextField(
@@ -460,17 +508,26 @@ class _InicioSesionState extends State<InicioSesion>
                                               textPrimary: textPrimary,
                                               textSecondary: textSecondary,
                                               borderColor: borderColor,
-                                              keyboard: TextInputType.emailAddress,
-                                              autofill: const [AutofillHints.email],
+                                              keyboard:
+                                                  TextInputType.emailAddress,
+                                              autofill: const [
+                                                AutofillHints.email
+                                              ],
                                               validator: (v) {
-                                                if (v == null || v.trim().isEmpty) return 'El correo es requerido';
-                                                final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
-                                                if (!emailRegex.hasMatch(v.trim())) return 'Ingresa un correo válido';
+                                                if (v == null ||
+                                                    v.trim().isEmpty)
+                                                  return 'El correo es requerido';
+                                                final emailRegex = RegExp(
+                                                    r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+                                                if (!emailRegex
+                                                    .hasMatch(v.trim()))
+                                                  return 'Ingresa un correo válido';
                                                 return null;
                                               },
                                             ),
                                             const SizedBox(height: 20),
-                                            _buildLabel("SEGURIDAD", labelColor),
+                                            _buildLabel(
+                                                "SEGURIDAD", labelColor),
                                             _buildTextField(
                                               ctrl: _passwordController,
                                               focus: _passFocus,
@@ -483,110 +540,217 @@ class _InicioSesionState extends State<InicioSesion>
                                               borderColor: borderColor,
                                               isPassword: true,
                                               obscure: _obscure,
-                                              autofill: const [AutofillHints.password],
-                                              onToggle: () => setState(() => _obscure = !_obscure),
+                                              autofill: const [
+                                                AutofillHints.password
+                                              ],
+                                              onToggle: () => setState(
+                                                  () => _obscure = !_obscure),
                                               onSubmitted: (_) => _loginUser(),
                                               validator: (v) {
-                                                if (v == null || v.isEmpty) return 'La contraseña es requerida';
-                                                if (v.length < 8) return 'Mínimo 8 caracteres';
-                                                if (!RegExp(r'^(?=.*[A-Za-z])(?=.*\d).+$').hasMatch(v)) {
+                                                if (v == null || v.isEmpty)
+                                                  return 'La contraseña es requerida';
+                                                if (v.length < 8)
+                                                  return 'Mínimo 8 caracteres';
+                                                if (!RegExp(
+                                                        r'^(?=.*[A-Za-z])(?=.*\d).+$')
+                                                    .hasMatch(v)) {
                                                   return 'Debe incluir letras y números';
                                                 }
                                                 return null;
                                               },
                                             ),
                                             const SizedBox(height: 40),
-
                                             ValueListenableBuilder<bool>(
                                               valueListenable: _loadingNotifier,
-                                              builder: (context, isLoading, _) => Column(
-                                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                              builder:
+                                                  (context, isLoading, _) =>
+                                                      Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.stretch,
                                                 children: [
                                                   Container(
                                                     height: 58,
                                                     decoration: BoxDecoration(
-                                                      borderRadius: BorderRadius.circular(16),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              16),
                                                       boxShadow: [
                                                         if (!isLoading)
                                                           BoxShadow(
-                                                            color: AppColors.primary.withValues(alpha: isDark ? 0.2 : 0.15),
+                                                            color: AppColors
+                                                                .primary
+                                                                .withValues(
+                                                                    alpha: isDark
+                                                                        ? 0.2
+                                                                        : 0.15),
                                                             blurRadius: 15,
-                                                            offset: const Offset(0, 6),
+                                                            offset:
+                                                                const Offset(
+                                                                    0, 6),
                                                           ),
                                                       ],
                                                     ),
                                                     child: ElevatedButton(
-                                                      onPressed: isLoading ? null : _loginUser,
-                                                      style: ElevatedButton.styleFrom(
-                                                        backgroundColor: AppColors.primary,
-                                                        foregroundColor: Colors.white,
+                                                      onPressed: isLoading
+                                                          ? null
+                                                          : _loginUser,
+                                                      style: ElevatedButton
+                                                          .styleFrom(
+                                                        backgroundColor:
+                                                            AppColors.primary,
+                                                        foregroundColor:
+                                                            Colors.white,
                                                         elevation: 0,
-                                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                                        disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.4),
+                                                        shape: RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        16)),
+                                                        disabledBackgroundColor:
+                                                            AppColors.primary
+                                                                .withValues(
+                                                                    alpha: 0.4),
                                                       ),
                                                       child: isLoading
                                                           ? const SizedBox(
                                                               height: 24,
                                                               width: 24,
-                                                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                                              child: CircularProgressIndicator(
+                                                                  color: Colors
+                                                                      .white,
+                                                                  strokeWidth:
+                                                                      2),
                                                             )
                                                           : const Text(
                                                               "CONTINUAR",
                                                               style: TextStyle(
                                                                 fontSize: 15,
-                                                                fontWeight: FontWeight.w900,
-                                                                letterSpacing: 1.2,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w900,
+                                                                letterSpacing:
+                                                                    1.2,
                                                               ),
                                                             ),
                                                     ),
                                                   ),
                                                   const SizedBox(height: 24),
-
                                                   Row(
                                                     children: [
-                                                      Expanded(child: Divider(color: borderColor)),
+                                                      Expanded(
+                                                          child: Divider(
+                                                              color:
+                                                                  borderColor)),
                                                       Padding(
-                                                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                                                        child: Text("O", style: GoogleFonts.inter(color: textSecondary.withValues(alpha: 0.5), fontSize: 12, fontWeight: FontWeight.w800)),
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                horizontal: 16),
+                                                        child: Text("O",
+                                                            style: GoogleFonts.inter(
+                                                                color: textSecondary
+                                                                    .withValues(
+                                                                        alpha:
+                                                                            0.5),
+                                                                fontSize: 12,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w800)),
                                                       ),
-                                                      Expanded(child: Divider(color: borderColor)),
+                                                      Expanded(
+                                                          child: Divider(
+                                                              color:
+                                                                  borderColor)),
                                                     ],
                                                   ),
                                                   const SizedBox(height: 24),
-
                                                   SizedBox(
                                                     height: 58,
                                                     child: ElevatedButton(
-                                                      onPressed: isLoading ? null : _loginWithGoogle,
-                                                      style: ElevatedButton.styleFrom(
-                                                        backgroundColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
-                                                        foregroundColor: textPrimary,
+                                                      onPressed: isLoading
+                                                          ? null
+                                                          : _loginWithGoogle,
+                                                      style: ElevatedButton
+                                                          .styleFrom(
+                                                        backgroundColor: isDark
+                                                            ? Colors.white
+                                                                .withValues(
+                                                                    alpha: 0.05)
+                                                            : Colors.white,
+                                                        foregroundColor:
+                                                            textPrimary,
                                                         elevation: 0,
-                                                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                                                        shape: RoundedRectangleBorder(
-                                                          borderRadius: BorderRadius.circular(16),
-                                                          side: BorderSide(color: borderColor),
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                horizontal: 20),
+                                                        shape:
+                                                            RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(16),
+                                                          side: BorderSide(
+                                                              color:
+                                                                  borderColor),
                                                         ),
                                                       ),
                                                       child: Row(
-                                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                        mainAxisAlignment:
+                                                            MainAxisAlignment
+                                                                .spaceBetween,
                                                         children: [
-                                                          Image.asset('assets/Google_Logo.png', height: 24, width: 24),
+                                                          Image.asset(
+                                                              'assets/Google_Logo.png',
+                                                              height: 24,
+                                                              width: 24),
                                                           RichText(
                                                             text: TextSpan(
-                                                              style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700, color: textPrimary),
+                                                              style: GoogleFonts.inter(
+                                                                  fontSize: 15,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w700,
+                                                                  color:
+                                                                      textPrimary),
                                                               children: const [
-                                                                TextSpan(text: 'Continuar con '),
-                                                                TextSpan(text: 'G', style: TextStyle(color: Color(0xFF4285F4))),
-                                                                TextSpan(text: 'o', style: TextStyle(color: Color(0xFFEA4335))),
-                                                                TextSpan(text: 'o', style: TextStyle(color: Color(0xFFFBBC05))),
-                                                                TextSpan(text: 'g', style: TextStyle(color: Color(0xFF4285F4))),
-                                                                TextSpan(text: 'l', style: TextStyle(color: Color(0xFF34A853))),
-                                                                TextSpan(text: 'e', style: TextStyle(color: Color(0xFFEA4335))),
+                                                                TextSpan(
+                                                                    text:
+                                                                        'Continuar con '),
+                                                                TextSpan(
+                                                                    text: 'G',
+                                                                    style: TextStyle(
+                                                                        color: Color(
+                                                                            0xFF4285F4))),
+                                                                TextSpan(
+                                                                    text: 'o',
+                                                                    style: TextStyle(
+                                                                        color: Color(
+                                                                            0xFFEA4335))),
+                                                                TextSpan(
+                                                                    text: 'o',
+                                                                    style: TextStyle(
+                                                                        color: Color(
+                                                                            0xFFFBBC05))),
+                                                                TextSpan(
+                                                                    text: 'g',
+                                                                    style: TextStyle(
+                                                                        color: Color(
+                                                                            0xFF4285F4))),
+                                                                TextSpan(
+                                                                    text: 'l',
+                                                                    style: TextStyle(
+                                                                        color: Color(
+                                                                            0xFF34A853))),
+                                                                TextSpan(
+                                                                    text: 'e',
+                                                                    style: TextStyle(
+                                                                        color: Color(
+                                                                            0xFFEA4335))),
                                                               ],
                                                             ),
                                                           ),
-                                                          const SizedBox(width: 24),
+                                                          const SizedBox(
+                                                              width: 24),
                                                         ],
                                                       ),
                                                     ),
@@ -604,7 +768,6 @@ class _InicioSesionState extends State<InicioSesion>
                             ),
                           ),
                           const SizedBox(height: 32),
-
                           FadeTransition(
                             opacity: fadeInputs,
                             child: Row(
@@ -612,11 +775,15 @@ class _InicioSesionState extends State<InicioSesion>
                               children: [
                                 Text(
                                   "¿No tienes cuenta? ",
-                                  style: GoogleFonts.inter(color: textSecondary, fontSize: 14),
+                                  style: GoogleFonts.inter(
+                                      color: textSecondary, fontSize: 14),
                                 ),
                                 GestureDetector(
                                   onTap: () {
-                                    Navigator.pushNamed(context, '/registrarupage', arguments: widget.invernaderoIdToJoin ?? _pendingInvernadero);
+                                    Navigator.pushNamed(
+                                        context, '/registrarupage',
+                                        arguments: widget.invernaderoIdToJoin ??
+                                            _pendingInvernadero);
                                   },
                                   child: Text(
                                     "CREAR CUENTA",
@@ -650,7 +817,11 @@ class _InicioSesionState extends State<InicioSesion>
       padding: const EdgeInsets.only(bottom: 10.0, left: 4.0),
       child: Text(
         text,
-        style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w800, color: color.withValues(alpha: 0.85), letterSpacing: 1.2),
+        style: GoogleFonts.inter(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: color.withValues(alpha: 0.85),
+            letterSpacing: 1.2),
       ),
     );
   }
@@ -680,26 +851,47 @@ class _InicioSesionState extends State<InicioSesion>
       keyboardType: keyboard,
       autofillHints: autofill,
       onFieldSubmitted: onSubmitted,
-      style: GoogleFonts.inter(fontSize: 16, color: textPrimary, fontWeight: FontWeight.w500),
+      style: GoogleFonts.inter(
+          fontSize: 16, color: textPrimary, fontWeight: FontWeight.w500),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: GoogleFonts.inter(color: textSecondary.withValues(alpha: 0.4), fontSize: 15),
-        prefixIcon: Icon(icon, size: 20, color: textSecondary.withValues(alpha: 0.6)),
+        hintStyle: GoogleFonts.inter(
+            color: textSecondary.withValues(alpha: 0.4), fontSize: 15),
+        prefixIcon:
+            Icon(icon, size: 20, color: textSecondary.withValues(alpha: 0.6)),
         suffixIcon: isPassword
             ? IconButton(
-                icon: Icon(obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: textSecondary.withValues(alpha: 0.6), size: 18),
+                icon: Icon(
+                    obscure
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_rounded,
+                    color: textSecondary.withValues(alpha: 0.6),
+                    size: 18),
                 onPressed: onToggle,
               )
             : null,
         filled: true,
         fillColor: inputBg,
-        contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 18),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: borderColor, width: 1)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: borderColor, width: 1)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.primary, width: 1.2)),
-        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.redAccent.withValues(alpha: 0.5), width: 1)),
-        focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Colors.redAccent, width: 1.2)),
-        errorStyle: GoogleFonts.inter(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.w500),
+        contentPadding:
+            const EdgeInsets.symmetric(vertical: 18, horizontal: 18),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: borderColor, width: 1)),
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: borderColor, width: 1)),
+        focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: AppColors.primary, width: 1.2)),
+        errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(
+                color: Colors.redAccent.withValues(alpha: 0.5), width: 1)),
+        focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Colors.redAccent, width: 1.2)),
+        errorStyle: GoogleFonts.inter(
+            color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.w500),
       ),
       validator: validator,
     );
